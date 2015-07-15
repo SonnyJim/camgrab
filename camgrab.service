@@ -1,0 +1,9 @@
+[Unit]
+Description=Camgrab Script
+
+[Service]
+ExecStart=/usr/local/bin/camgrab
+User=camera
+
+[Install]
+WantedBy=multi-user.target
