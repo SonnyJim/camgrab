@@ -9,7 +9,7 @@
 
 #define LOGFILE "/mnt/data/Backup/Cameras/logs/camgrab.log"
 
-#define DEFAULT_CFG_FILE "./camgrab.conf"
+#define DEFAULT_CFG_FILE "/etc/camgrab.conf"
 
 //Set to 5Meg
 int verbose;

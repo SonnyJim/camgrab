@@ -270,7 +270,11 @@ int main(int argc, char **argv)
         }
     }
     
-    cfg_load ();
+    if (cfg_load ())
+    {
+        fprintf (stderr, "Error loading config file %s\n", DEFAULT_CFG_FILE);
+        return 1;
+    }
 
     while (running)
     {
