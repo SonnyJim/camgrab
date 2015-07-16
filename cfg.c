@@ -61,6 +61,14 @@ static int check_cfg_line (char* cfg_line)
         strcpy (opt, cfg_line + 4 + strlen (CFG_CAM_DIR));
         //Strip the newline
         opt[strlen (opt) - 1] = '\0';
+
+        if (opt[strlen (opt) - 1] != '/')
+             
+        {
+            fprintf (stderr, cfg_line);
+            fprintf (stderr, "Directory does not have / at the end: %s\n", opt);
+            return 1;
+        }
         cams[cam_num].dir = malloc (sizeof (opt));
         strcpy (cams[cam_num].dir, opt);
 

@@ -48,7 +48,7 @@ int get_dir_size (char* dir)
 static void remove_empty_dirs (char* dir)
 {
     char cmd[1024];
-    fprintf (stdout, "Checking for empty dirs\n");
+    fprintf (stdout, "Checking for empty dirs from %s\n", dir);
     
     sprintf (cmd, "find %s -type d -empty -exec rmdir {} \\;", dir);
     fprintf (stdout, cmd);
