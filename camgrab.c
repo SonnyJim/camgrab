@@ -138,7 +138,7 @@ int grab_image (int cam_num)
     char buffer[1024];
    
     if (verbose)
-        fprintf (stdout, "Last grabbed CAM%i on %i\n", cam_num, cams[cam_num].last_grabbed);
+        fprintf (stdout, "Last grabbed CAM%i on %i\n", cam_num + 1, cams[cam_num].last_grabbed);
     
     if (cams[cam_num].last_grabbed + cams[cam_num].interval > time (NULL))
     {
@@ -154,9 +154,9 @@ int grab_image (int cam_num)
         fprintf (stderr, "Error opening %s for writing\n", filename);
         return 1;
     }
-    
+     
     curl = curl_easy_init();
-    if(curl) 
+    if (curl) 
     {
         curl_easy_setopt(curl, CURLOPT_URL, cams[cam_num].url);
         curl_easy_setopt (curl, CURLOPT_HTTPAUTH, (long)CURLAUTH_ANY);
@@ -170,8 +170,8 @@ int grab_image (int cam_num)
          /* Check for errors */ 
          if(res != CURLE_OK)
          {
-             fprintf(stderr, "curl_easy_perform() failed for CAM%i: %s\n", cam_num, curl_easy_strerror(res));
-             sprintf (buffer, "Error: Couldn't fetch image from CAM%i\n", cam_num);
+             fprintf(stderr, "curl_easy_perform() failed for CAM%i: %s\n", cam_num + 1, curl_easy_strerror(res));
+             sprintf (buffer, "Error: !CURLE_OK Couldn't fetch image from CAM%i: %s\nurl: %s", cam_num + 1, curl_easy_strerror(res), cams[cam_num].url);
              log_text (buffer);
              curl_easy_cleanup(curl);
              return 1;
@@ -186,6 +186,7 @@ int grab_image (int cam_num)
      }
      else
      {
+         curl_easy_cleanup(curl);
          sprintf (buffer, "Error: Couldn't fetch image from CAM%i\n", cam_num);
          log_text (buffer);
          return 1;
@@ -201,23 +202,6 @@ static void sig_handler (int signo)
         running = 0;
     }
 }
-/*
-//Function to rotate files once a directory hits a certain size
-void rotate (void)
-{
-    if (get_dir_size (CAM1_DIR) > MAX_DIR_SIZE)
-        rotate_dir (CAM1_DIR);
-    
-    if (get_dir_size (CAM2_DIR) > MAX_DIR_SIZE)
-        get_dir_size (CAM2_DIR);
-
-    if (get_dir_size (CAM3_DIR) > MAX_DIR_SIZE)
-        get_dir_size (CAM3_DIR);
-    
-    if (get_dir_size (CAM4_DIR) > MAX_DIR_SIZE)
-    get_dir_size (CAM4_DIR);
-}
-*/
 
 static void rotate (int cam_num)
 {
