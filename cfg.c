@@ -24,7 +24,8 @@ static void cfg_dump (void)
     if (!verbose)
         return;
     fprintf (stdout, "Dumping camera config\n");
-    for (i = 0; i < MAX_CAMS; i++)
+    fprintf (stdout, "num_cams: %i\n", num_cams);
+    for (i = 0; i < num_cams; i++)
     {
         fprintf (stdout, "\n**** CAM%i ****\n", i + 1); 
         fprintf (stdout, "url = %s\n", cams[i].url);
@@ -50,7 +51,7 @@ static int check_cfg_line (char* cfg_line)
     if (cam_num > 0)
         cam_num -= 1;
 
-    if (strncmp (name, "cam", 3) != 0)
+    if (strncmp (name, "cam", 3) != 0 && strncmp (cfg_line, CFG_NUM_CAMS, strlen(CFG_NUM_CAMS)) != 0)
     {
         fprintf (stderr, "Error reading config, line doesn't start with cam: %s\n");
         return 1;
@@ -105,8 +106,7 @@ static int check_cfg_line (char* cfg_line)
         else
             cams[cam_num].enabled = atoi (opt);
     }
-    
-    return 0;
+   return 0;
 }
 
 
@@ -117,6 +117,9 @@ int cfg_load (void)
     FILE *cfg_file;
     char cfg_line[1024];
     int len;
+    char opt[256];
+    
+    num_cams = 0;
 
     if (verbose)
         fprintf (stdout, "Attempting to load configuration file %s\n", DEFAULT_CFG_FILE);
@@ -124,6 +127,27 @@ int cfg_load (void)
     
     if (cfg_file == NULL)
         return errno;
+
+
+    while (fgets (cfg_line, 1024, cfg_file) != NULL)
+    {
+        if (cfg_line[0] != '#' && strlen (cfg_line) > 1)
+        {
+            if (strncmp (cfg_line, CFG_NUM_CAMS, strlen (CFG_NUM_CAMS)) == 0)
+            {
+                strcpy (opt, cfg_line + strlen (CFG_NUM_CAMS));
+                num_cams = atoi (opt);
+            }
+        }
+    }
+
+    if (num_cams == 0)
+    {
+        fprintf (stderr, "Couldn't find num_cams in config file\n");
+        return 1;
+    }
+
+    rewind (cfg_file);
 
     cams_init ();
 

@@ -25,7 +25,9 @@ void rotate_dir (char* dir, int maxsize);
 
 // cfg.c
 int cfg_load (void);
+int num_cams;
 
+#define CFG_NUM_CAMS "num_cams="
 #define CFG_CAM_DIR "_dir="
 #define CFG_CAM_URL "_url="
 #define CFG_CAM_MAXSIZE "_maxsize="
@@ -33,7 +35,7 @@ int cfg_load (void);
 #define CFG_CAM_INTERVAL "_interval="
 #define CFG_CAM_ENABLED "_enabled="
 
-#define MAX_CAMS 4
+#define MAX_CAMS 64
 
 struct cam
 {

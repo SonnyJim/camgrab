@@ -129,6 +129,17 @@ char* build_filename (int cam_num)
 
 }
 
+//Copy the latest image to /var/ww/html/cameras
+static int build_html (int cam_num, char* filename)
+{
+    char name[1024];
+    char cmd[1024];
+    sprintf (name, "CAM%i.jpg", cam_num + 1);
+    sprintf (cmd, "cp %s /var/www/html/cameras/%s", filename, name);
+    system (cmd);
+    return 0;
+}
+
 int grab_image (int cam_num)
 {
     CURL *curl;
@@ -158,25 +169,29 @@ int grab_image (int cam_num)
     curl = curl_easy_init();
     if (curl) 
     {
-        curl_easy_setopt(curl, CURLOPT_URL, cams[cam_num].url);
+        curl_easy_setopt (curl, CURLOPT_TIMEOUT, 5); 
+        curl_easy_setopt (curl, CURLOPT_URL, cams[cam_num].url);
         curl_easy_setopt (curl, CURLOPT_HTTPAUTH, (long)CURLAUTH_ANY);
         curl_easy_setopt (curl, CURLOPT_USERPWD, cams[cam_num].password);
         curl_easy_setopt (curl, CURLOPT_WRITEDATA, fp);
+        
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        /* Perform the request, res will get the return code */ 
+        res = curl_easy_perform(curl);
+        
+        /* Check for errors */ 
+        if(res != CURLE_OK)
+        {
+            fprintf(stderr, "curl_easy_perform() failed for CAM%i: %s\n", cam_num + 1, curl_easy_strerror(res));
+            sprintf (buffer, "Error: !CURLE_OK Couldn't fetch image from CAM%i: %s\nurl: %s", cam_num + 1, curl_easy_strerror(res), cams[cam_num].url);
+            log_text (buffer);
+            curl_easy_cleanup(curl);
+            return 1;
+        }
 
-         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-         /* Perform the request, res will get the return code */ 
-         res = curl_easy_perform(curl);
-         
-         /* Check for errors */ 
-         if(res != CURLE_OK)
-         {
-             fprintf(stderr, "curl_easy_perform() failed for CAM%i: %s\n", cam_num + 1, curl_easy_strerror(res));
-             sprintf (buffer, "Error: !CURLE_OK Couldn't fetch image from CAM%i: %s\nurl: %s", cam_num + 1, curl_easy_strerror(res), cams[cam_num].url);
-             log_text (buffer);
-             curl_easy_cleanup(curl);
-             return 1;
-         }
-         /* always cleanup */
+        build_html (cam_num, filename);
+
+        /* always cleanup */
         curl_easy_cleanup(curl);
         fclose (fp);
         cams[cam_num].last_grabbed = (long) time (NULL);
@@ -213,7 +228,7 @@ static void grab_images (void)
 {
     int i;
 
-    for (i = 0; i < MAX_CAMS; i++)
+    for (i = 0; i < num_cams; i++)
     {
         if (cams[i].enabled)
         {
