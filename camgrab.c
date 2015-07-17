@@ -245,32 +245,20 @@ static void create_threads (void)
     int i;
     for (i = 0; i < num_cams; i++)
     {
-        int *arg = malloc (sizeof (*arg));
-        if (arg == NULL)
-        {
-            fprintf (stderr, "Error malloc for arg\n");
-            exit (1);
-        }
-        *arg = i;
-        if (pthread_create (&threads[i], NULL, &camgrab, arg) != 0)
-        {
-            fprintf (stderr, "Error creating thread %i\n", i);
-        }
-    }
-}
-
-static void grab_images (void)
-{
-    int i;
-
-    for (i = 0; i < num_cams; i++)
-    {
         if (cams[i].enabled)
         {
-            grab_image (i);
-            rotate (i);
+            int *arg = malloc (sizeof (*arg));
+            if (arg == NULL)
+            {
+                fprintf (stderr, "Error malloc for arg\n");
+                exit (1);
+            }
+            *arg = i;
+            if (pthread_create (&threads[i], NULL, &camgrab, arg) != 0)
+            {
+                fprintf (stderr, "Error creating thread %i\n", i);
+            }
         }
-    
     }
 }
 
@@ -315,7 +303,6 @@ int main(int argc, char **argv)
 
     while (running)
     {
-    //    grab_images ();
     }
     fprintf (stdout, "Exiting\n");
     return 0;
