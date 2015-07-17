@@ -182,9 +182,11 @@ int grab_image (int cam_num)
         /* Check for errors */ 
         if(res != CURLE_OK)
         {
+
             fprintf(stderr, "curl_easy_perform() failed for CAM%i: %s\n", cam_num + 1, curl_easy_strerror(res));
             sprintf (buffer, "Error: !CURLE_OK Couldn't fetch image from CAM%i: %s\nurl: %s", cam_num + 1, curl_easy_strerror(res), cams[cam_num].url);
             log_text (buffer);
+            fclose (fp);
             curl_easy_cleanup(curl);
             return 1;
         }
