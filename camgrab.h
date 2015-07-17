@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <curl/curl.h>
 #include <stdio.h>
@@ -6,6 +7,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <signal.h>
+#include <pthread.h>
 
 #define LOGFILE "/mnt/data/Backup/Cameras/logs/camgrab.log"
 

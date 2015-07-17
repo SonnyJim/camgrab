@@ -1,4 +1,4 @@
-LIBS=-lcurl
+LIBS=-lcurl -lpthread
 OBJS= camgrab.o pidfile.o rotate.o cfg.o
 CFLAGS += -g
 camgrab: $(OBJS)

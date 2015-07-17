@@ -3,6 +3,8 @@
 char time_str[24];
 char filename[1024];
 
+pthread_t threads[MAX_CAMS];
+
 char* get_time (void)
 {
     time_t rawtime;
@@ -226,6 +228,37 @@ static void rotate (int cam_num)
         rotate_dir (cams[cam_num].dir, cams[cam_num].maxsize);
 }
 
+void* camgrab (void *arg)
+{
+    int cam_num =  *((int *) arg);
+    free (arg);
+
+    while (running)
+    {
+        grab_image (cam_num);
+        rotate (cam_num);
+    }
+}
+
+static void create_threads (void)
+{
+    int i;
+    for (i = 0; i < num_cams; i++)
+    {
+        int *arg = malloc (sizeof (*arg));
+        if (arg == NULL)
+        {
+            fprintf (stderr, "Error malloc for arg\n");
+            exit (1);
+        }
+        *arg = i;
+        if (pthread_create (&threads[i], NULL, &camgrab, arg) != 0)
+        {
+            fprintf (stderr, "Error creating thread %i\n", i);
+        }
+    }
+}
+
 static void grab_images (void)
 {
     int i;
@@ -276,10 +309,13 @@ int main(int argc, char **argv)
         fprintf (stderr, "Error loading config file %s\n", DEFAULT_CFG_FILE);
         return 1;
     }
+   
+    
+    create_threads ();
 
     while (running)
     {
-        grab_images ();
+    //    grab_images ();
     }
     fprintf (stdout, "Exiting\n");
     return 0;
