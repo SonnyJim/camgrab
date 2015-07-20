@@ -5,7 +5,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
-static unsigned int total = 0;
+static long long total = 0;
 static unsigned int oldest_time;
 char oldest_file[1024];
 int file_count = 0;
@@ -34,7 +34,7 @@ int sum(const char *fpath, const struct stat *sb, int typeflag)
             return 0;
 }
 
-int get_dir_size (char* dir) 
+long long get_dir_size (char* dir) 
 {
     total = 0;
     if (ftw(dir, &sum, 1)) 
@@ -48,10 +48,15 @@ int get_dir_size (char* dir)
 static void remove_empty_dirs (char* dir)
 {
     char cmd[1024];
-    fprintf (stdout, "Checking for empty dirs from %s\n", dir);
+    strcpy (cmd, "");
     
-    sprintf (cmd, "find %s -type d -empty -exec rmdir {} \\;", dir);
-    fprintf (stdout, cmd);
+    if (verbose)
+    {
+        fprintf (stdout, "Checking for empty dirs from %s\n", dir);
+        sprintf (cmd, "find %s -type d -empty -exec rmdir {} \\;", dir);
+        fprintf (stdout, cmd);
+        fprintf (stdout, "\n");
+    }
     system (cmd);
 }
 

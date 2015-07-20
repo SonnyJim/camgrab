@@ -22,7 +22,7 @@ int remove_pid (void);
 int check_pid (void);
 
 // rotate.c
-int get_dir_size (char* dir);
+long long get_dir_size (char* dir);
 void rotate_dir (char* dir, int maxsize);
 
 // cfg.c
@@ -44,7 +44,7 @@ struct cam
     char *url;
     char *dir;
     char *password;
-    int maxsize;
+    long long maxsize;
     int interval;
     int enabled;
     long last_grabbed;
