@@ -3,7 +3,8 @@
 char time_str[24];
 char filename[1024];
 
-pthread_t threads[MAX_CAMS];
+pthread_t cam_threads[MAX_CAMS];
+pthread_t rotate_thread;
 
 char* get_time (void)
 {
@@ -150,13 +151,13 @@ int grab_image (int cam_num)
     char filename[1024];
     char buffer[1024];
    
-    if (verbose)
-        fprintf (stdout, "Last grabbed CAM%i on %i\n", cam_num + 1, cams[cam_num].last_grabbed);
+    //if (verbose)
+    //    fprintf (stdout, "Last grabbed CAM%i on %i\n", cam_num + 1, cams[cam_num].last_grabbed);
     
     if (cams[cam_num].last_grabbed + cams[cam_num].interval > time (NULL))
     {
-        if (verbose)
-            fprintf (stdout, "Not grabbing, last grabbed %i, time %i\n", time (NULL));
+        //if (verbose)
+        //    fprintf (stdout, "Not grabbing, last grabbed %i, time %i\n", time (NULL));
         return;
     }
 
@@ -222,12 +223,6 @@ static void sig_handler (int signo)
     }
 }
 
-static void rotate (int cam_num)
-{
-    if (get_dir_size (cams[cam_num].dir) > cams[cam_num].maxsize)
-        rotate_dir (cams[cam_num].dir, cams[cam_num].maxsize);
-}
-
 void* camgrab (void *arg)
 {
     int cam_num =  *((int *) arg);
@@ -236,27 +231,59 @@ void* camgrab (void *arg)
     while (running)
     {
         grab_image (cam_num);
-        rotate (cam_num);
+    }
+}
+
+void* rotate_dirs (void *arg)
+{
+    int i;
+    
+    while (running)
+    {
+        for (i = 0; i < num_cams; i++)
+        {
+            if (cams[i].enabled)
+                rotate (i);
+        }
+        sleep (60);
     }
 }
 
 static void create_threads (void)
 {
     int i;
+    int ret;
+    ret = pthread_create (&rotate_thread, NULL, &rotate_dirs, NULL);
+    if (ret != 0)
+    {
+        fprintf (stdout, "Error creating rotate thread\n");
+        exit (1);
+    }
+
     for (i = 0; i < num_cams; i++)
     {
         if (cams[i].enabled)
         {
+            fprintf (stdout, "CAM%i enabled\n", i + 1); 
             int *arg = malloc (sizeof (*arg));
             if (arg == NULL)
             {
                 fprintf (stderr, "Error malloc for arg\n");
                 exit (1);
             }
+            
             *arg = i;
-            if (pthread_create (&threads[i], NULL, &camgrab, arg) != 0)
+            
+            ret = pthread_create (&cam_threads[i], NULL, &camgrab, arg);
+            fprintf (stdout, "pthread returned %i\n", ret);
+            
+            if (ret != 0)
             {
                 fprintf (stderr, "Error creating thread %i\n", i);
+            }
+            else
+            {
+                fprintf (stdout, "started thread %i\n", i);
             }
         }
     }

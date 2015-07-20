@@ -22,7 +22,8 @@ int get_date(const char *fpath, const struct stat *sb, int typeflag)
     {
         oldest_time = sb->st_mtime;
         strcpy (oldest_file, fpath);
-        fprintf (stdout, "tagging %s as oldest file\n", oldest_file);
+        if (verbose)
+            fprintf (stdout, "tagging %s as oldest file\n", oldest_file);
     }
 
     return 0;
@@ -34,14 +35,30 @@ int sum(const char *fpath, const struct stat *sb, int typeflag)
             return 0;
 }
 
-long long get_dir_size (char* dir) 
+void rotate (int cam_num)
+{
+    long long dir_size;
+
+    dir_size = get_dir_size (cam_num);
+    if (dir_size == -1)
+    {
+        fprintf (stdout, "Error getting dir_size\n");
+        return;
+    }
+    else if (dir_size > cams[cam_num].maxsize)
+        rotate_dir (cam_num);
+}
+
+long long get_dir_size (int cam_num) 
 {
     total = 0;
-    if (ftw(dir, &sum, 1)) 
+    if (ftw(cams[cam_num].dir, &sum, 1)) 
     {
         perror("ftw");
         return -1;
     }
+    if (verbose)
+        fprintf (stdout, "get_dir_size: %s: %lu\n", cams[cam_num].dir, total);
     return total;
 }
 
@@ -60,29 +77,33 @@ static void remove_empty_dirs (char* dir)
     system (cmd);
 }
 
-void rotate_dir (char* dir, int maxsize)
+void rotate_dir (int cam_num)
 {
     char buffer[256];
-    long dir_size; 
+    long long dir_size; 
     oldest_time = time(0);
     
     if (verbose)
     {
-        sprintf (buffer, "Rotating directory: %s because size %i is bigger than %i\n", dir, get_dir_size (dir), maxsize);
+        sprintf (buffer, "Rotating directory: %s because size %i is bigger than %i\n", cams[cam_num].dir, get_dir_size (cam_num), cams[cam_num].maxsize);
         fprintf (stdout, buffer);
     }
 
     log_text (buffer);
-    dir_size = get_dir_size (dir);
-    
+    dir_size = get_dir_size (cam_num);
+    if (verbose)
+        fprintf (stdout, "Pre-rotate %s size: %i\n", cams[cam_num].dir, dir_size);
+     
     //Find the oldest entry
-    while (dir_size > maxsize)
+    while (dir_size > cams[cam_num].maxsize)
     {
-        if (ftw (dir, &get_date, 1))
+
+        if (ftw (cams[cam_num].dir, &get_date, 1))
         {
             perror ("ftw");
             return;
         }
+        oldest_time = time(0);
         if (strlen (oldest_file) > 1)
         {
             if (verbose)
@@ -94,8 +115,9 @@ void rotate_dir (char* dir, int maxsize)
                 return;
             }
         }
-        dir_size = get_dir_size (dir);
-        fprintf (stdout, "New dir size: %i, maxsize %i\n", dir_size, maxsize);
+        dir_size = get_dir_size (cam_num);
+        if (verbose)
+            fprintf (stdout, "%s size: %i, maxsize %i\n", cams[cam_num].dir, dir_size, cams[cam_num].maxsize);
     }
-    remove_empty_dirs (dir);
+    remove_empty_dirs (cams[cam_num].dir);
 }
