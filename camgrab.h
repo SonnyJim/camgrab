@@ -49,6 +49,7 @@ struct cam
     int interval;
     int enabled;
     long last_grabbed;
+    char filename[1024];
 };
 
 struct cam cams[MAX_CAMS];

@@ -1,20 +1,25 @@
 #include "camgrab.h"
 
-char time_str[24];
-char filename[1024];
+//char time_str[24];
 
 pthread_t cam_threads[MAX_CAMS];
 pthread_t rotate_thread;
 
 char* get_time (void)
 {
-    time_t rawtime;
+    time_t current_time;
     struct tm * timeinfo;
     
-    time ( &rawtime );
-    timeinfo = localtime ( &rawtime );
+    char *time_str = malloc(24);
+    if (time_str == NULL)
+    {
+        fprintf (stderr, "Error malloc of time_str\n");
+        running = 0;
+    }
+    
+    time ( &current_time );
+    timeinfo = localtime ( &current_time );
     strcpy (time_str, asctime (timeinfo));
-    time_str[strlen(time_str) - 1] = 0;
     return time_str;
 }
 
@@ -22,7 +27,14 @@ char* get_year (void)
 {
     time_t current_time;
     struct tm * time_info;
-
+ 
+    char *time_str = malloc(24);
+    if (time_str == NULL)
+    {
+        fprintf (stderr, "Error malloc of time_str\n");
+        running = 0;
+    }
+    
     time (&current_time);
     time_info = localtime(&current_time);
 
@@ -34,7 +46,14 @@ char* get_month (void)
 {
     time_t current_time;
     struct tm * time_info;
-
+ 
+    char *time_str = malloc(24);
+    if (time_str == NULL)
+    {
+        fprintf (stderr, "Error malloc of time_str\n");
+        running = 0;
+    }
+    
     time (&current_time);
     time_info = localtime(&current_time);
 
@@ -46,7 +65,14 @@ char* get_day (void)
 {
     time_t current_time;
     struct tm * time_info;
-
+ 
+    char *time_str = malloc(24);
+    if (time_str == NULL)
+    {
+        fprintf (stderr, "Error malloc of time_str\n");
+        running = 0;
+    }
+    
     time (&current_time);
     time_info = localtime(&current_time);
 
@@ -58,7 +84,14 @@ char* get_hour (void)
 {
     time_t current_time;
     struct tm * time_info;
-
+ 
+    char *time_str = malloc(24);
+    if (time_str == NULL)
+    {
+        fprintf (stderr, "Error malloc of time_str\n");
+        running = 0;
+    }
+    
     time (&current_time);
     time_info = localtime(&current_time);
 
@@ -71,7 +104,14 @@ char* get_filename_time (char* dir, char* camera_name)
     time_t current_time;
     struct tm * time_info;
     char buffer[1024];
-
+ 
+    char *time_str = malloc(24);
+    if (time_str == NULL)
+    {
+        fprintf (stderr, "Error malloc of time_str\n");
+        running = 0;
+    }
+    
     time (&current_time);
     time_info = localtime(&current_time);
 
@@ -103,9 +143,10 @@ int log_text (char* text)
 }
 
 //See if we have a folder for todays date
-char* build_filename (int cam_num)
+void build_filename (int cam_num)
 {
     char dir_name[1024];
+    char filename[1024];
     int ret;
 
     //Build the directory structure and create them if needed
@@ -124,11 +165,12 @@ char* build_filename (int cam_num)
     ret = mkdir (dir_name, S_IRWXU);
    
     //Append the filename
-    strcpy (filename, dir_name);
+    strcpy (cams[cam_num].filename, "");
+    strcpy (cams[cam_num].filename, dir_name);
     sprintf (dir_name, "CAM%i", cam_num + 1);
-    strcat (filename, get_filename_time (cams[cam_num].dir, dir_name));
-
-    return filename;
+    strcat (cams[cam_num].filename, get_filename_time (cams[cam_num].dir, dir_name));
+    
+    return;
 
 }
 
@@ -161,11 +203,11 @@ int grab_image (int cam_num)
         return;
     }
 
-    strcpy (filename, build_filename(cam_num)); 
-    fp = fopen (filename, "w");
+    build_filename(cam_num); 
+    fp = fopen (cams[cam_num].filename, "w");
     if (fp == NULL)
     {
-        fprintf (stderr, "Error opening %s for writing\n", filename);
+        fprintf (stderr, "Error opening %s for writing\n", cams[cam_num].filename);
         return 1;
     }
      
@@ -186,7 +228,7 @@ int grab_image (int cam_num)
         if(res != CURLE_OK)
         {
 
-            fprintf(stderr, "curl_easy_perform() failed for CAM%i: %s\n", cam_num + 1, curl_easy_strerror(res));
+            fprintf(stderr, "%s curl_easy_perform() failed for CAM%i: %s\n", get_time(), cam_num + 1, curl_easy_strerror(res));
             sprintf (buffer, "Error: !CURLE_OK Couldn't fetch image from CAM%i: %s\nurl: %s", cam_num + 1, curl_easy_strerror(res), cams[cam_num].url);
             log_text (buffer);
             fclose (fp);
@@ -194,7 +236,7 @@ int grab_image (int cam_num)
             return 1;
         }
 
-        build_html (cam_num, filename);
+        build_html (cam_num, cams[cam_num].filename);
 
         /* always cleanup */
         curl_easy_cleanup(curl);
@@ -253,13 +295,14 @@ static void create_threads (void)
 {
     int i;
     int ret;
+    /*
     ret = pthread_create (&rotate_thread, NULL, &rotate_dirs, NULL);
     if (ret != 0)
     {
         fprintf (stdout, "Error creating rotate thread\n");
         exit (1);
     }
-
+*/
     for (i = 0; i < num_cams; i++)
     {
         if (cams[i].enabled)
