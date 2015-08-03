@@ -10,7 +10,7 @@ char* get_time (void)
     time_t current_time;
     struct tm * timeinfo;
     
-    char *time_str = malloc(24);
+    char *time_str = malloc(64);
     if (time_str == NULL)
     {
         fprintf (stderr, "Error malloc of time_str\n");
@@ -28,7 +28,7 @@ char* get_year (void)
     time_t current_time;
     struct tm * time_info;
  
-    char *time_str = malloc(24);
+    char *time_str = malloc(64);
     if (time_str == NULL)
     {
         fprintf (stderr, "Error malloc of time_str\n");
@@ -47,7 +47,7 @@ char* get_month (void)
     time_t current_time;
     struct tm * time_info;
  
-    char *time_str = malloc(24);
+    char *time_str = malloc(64);
     if (time_str == NULL)
     {
         fprintf (stderr, "Error malloc of time_str\n");
@@ -66,7 +66,7 @@ char* get_day (void)
     time_t current_time;
     struct tm * time_info;
  
-    char *time_str = malloc(24);
+    char *time_str = malloc(64);
     if (time_str == NULL)
     {
         fprintf (stderr, "Error malloc of time_str\n");
@@ -85,7 +85,7 @@ char* get_hour (void)
     time_t current_time;
     struct tm * time_info;
  
-    char *time_str = malloc(24);
+    char *time_str = malloc(64);
     if (time_str == NULL)
     {
         fprintf (stderr, "Error malloc of time_str\n");
@@ -104,8 +104,9 @@ char* get_filename_time (char* dir, char* camera_name)
     time_t current_time;
     struct tm * time_info;
     char buffer[1024];
- 
-    char *time_str = malloc(24);
+    
+
+    char *time_str = malloc(128);
     if (time_str == NULL)
     {
         fprintf (stderr, "Error malloc of time_str\n");
@@ -115,13 +116,19 @@ char* get_filename_time (char* dir, char* camera_name)
     time (&current_time);
     time_info = localtime(&current_time);
 
+    memset (buffer, 0, sizeof(buffer));
     strcpy (buffer, camera_name);
     strcat (buffer, "-");
-    strftime(time_str, sizeof(time_str), "%y%m%d_%H%M%S", time_info);
+
+    strftime (time_str, sizeof(time_str), "%y%m%d", time_info);
     strcat (buffer, time_str);
+    strftime (time_str, sizeof(time_str), "_%H%M%S", time_info);
+    strcat (buffer, time_str);
+    
+    
     strcat (buffer, ".jpg");
     strcpy (time_str, buffer);
-
+    
     return time_str;
 }
 
@@ -205,6 +212,10 @@ int grab_image (int cam_num)
 
     build_filename(cam_num); 
     fp = fopen (cams[cam_num].filename, "w");
+    if (verbose)
+    {
+        fprintf (stdout, "Grabbing image to file %s\n", cams[cam_num].filename);
+    }
     if (fp == NULL)
     {
         fprintf (stderr, "Error opening %s for writing\n", cams[cam_num].filename);
@@ -268,12 +279,12 @@ static void sig_handler (int signo)
 void* camgrab (void *arg)
 {
     int cam_num =  *((int *) arg);
-    free (arg);
 
     while (running)
     {
         grab_image (cam_num);
     }
+    //free (arg);
 }
 
 void* rotate_dirs (void *arg)

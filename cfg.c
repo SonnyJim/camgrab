@@ -50,13 +50,11 @@ static int check_cfg_line (char* cfg_line)
     /* cam struct starts from 0 */
     if (cam_num > 0)
         cam_num -= 1;
-
-    if (strncmp (name, "cam", 3) != 0 && strncmp (cfg_line, CFG_NUM_CAMS, strlen(CFG_NUM_CAMS)) != 0)
+    if (strncmp (cfg_line, "cam", 3) != 0 && strncmp (cfg_line, CFG_NUM_CAMS, strlen(CFG_NUM_CAMS)) != 0)
     {
         fprintf (stderr, "Error reading config, line doesn't start with cam: %s\n");
         return 1;
     }
-
     if (strncmp (cfg_line + 4, CFG_CAM_DIR, strlen (CFG_CAM_DIR)) == 0)
     {
         strcpy (opt, cfg_line + 4 + strlen (CFG_CAM_DIR));
