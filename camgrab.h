@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #define LOGFILE "/mnt/data/Backup/Cameras/logs/camgrab.log"
 
@@ -37,8 +38,16 @@ int num_cams;
 #define CFG_CAM_PASSWORD "_password="
 #define CFG_CAM_INTERVAL "_interval="
 #define CFG_CAM_ENABLED "_enabled="
+#define CFG_CAM_MAXRETRIES "_maxretries="
 
-#define MAX_CAMS 16
+#define MAX_CAMS 64
+
+typedef enum
+{
+    CAM_OK,
+    CAM_FAIL,
+    CAM_REBOOTING
+} cam_state;
 
 struct cam
 {
@@ -49,7 +58,11 @@ struct cam
     int interval;
     int enabled;
     long last_grabbed;
+    int retries;
+    int maxretries;
+    cam_state state;
     char filename[1024];
+    char last_filename[1024];
 };
 
 struct cam cams[MAX_CAMS];

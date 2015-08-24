@@ -2,8 +2,11 @@
 
 //char time_str[24];
 
+//TODO Fix rotation, fix sleeping properly
 pthread_t cam_threads[MAX_CAMS];
 pthread_t rotate_thread;
+
+int active_hour;
 
 char* get_time (void)
 {
@@ -160,16 +163,23 @@ void build_filename (int cam_num)
     strcpy (dir_name, cams[cam_num].dir);
     strcat (dir_name, get_year());
     strcat (dir_name, "/");
-    ret = mkdir (dir_name, S_IRWXU);
+    if( access( dir_name, F_OK ) == -1 ) 
+        ret = mkdir (dir_name, 750);
+
     strcat (dir_name, get_month());
     strcat (dir_name, "/");
-    ret = mkdir (dir_name, S_IRWXU);
+    if( access( dir_name, F_OK ) == -1 ) 
+        ret = mkdir (dir_name, 750);
+    
     strcat (dir_name, get_day());
     strcat (dir_name, "/");
-    ret = mkdir (dir_name, S_IRWXU);
+    if( access( dir_name, F_OK ) == -1 ) 
+        ret = mkdir (dir_name, 750);
+    
     strcat (dir_name, get_hour());
     strcat (dir_name, "/");
-    ret = mkdir (dir_name, S_IRWXU);
+    if( access( dir_name, F_OK ) == -1 ) 
+        ret = mkdir (dir_name, 750);
    
     //Append the filename
     strcpy (cams[cam_num].filename, "");
@@ -192,6 +202,29 @@ static int build_html (int cam_num, char* filename)
     return 0;
 }
 
+void grab_failed (int cam_num)
+{
+
+    if (cams[cam_num].state != CAM_REBOOTING)
+    {
+        cams[cam_num].retries++;
+        cams[cam_num].state = CAM_FAIL;
+    }
+    
+    fprintf (stderr, "CAM%i failed retries: %i/%i state: %i\nLast grabbed: %s\n", \
+        cam_num + 1, cams[cam_num].retries, cams[cam_num].maxretries, cams[cam_num].state, cams[cam_num].last_filename);
+    
+    if (cams[cam_num].retries > cams[cam_num].maxretries 
+        && cams[cam_num].state != CAM_REBOOTING
+        && cams[cam_num].maxretries > 0)
+    {
+        //Reboot the camera
+        if (verbose)
+            fprintf (stdout, "****** Reboot CAM%i ******\n", cam_num + 1);
+        cams[cam_num].state = CAM_REBOOTING;
+    }
+}
+
 int grab_image (int cam_num)
 {
     CURL *curl;
@@ -199,14 +232,10 @@ int grab_image (int cam_num)
     FILE* fp;
     char filename[1024];
     char buffer[1024];
-   
-    //if (verbose)
-    //    fprintf (stdout, "Last grabbed CAM%i on %i\n", cam_num + 1, cams[cam_num].last_grabbed);
-    
+    int filelen;
+
     if (cams[cam_num].last_grabbed + cams[cam_num].interval > time (NULL))
     {
-        //if (verbose)
-        //    fprintf (stdout, "Not grabbing, last grabbed %i, time %i\n", time (NULL));
         return;
     }
 
@@ -216,6 +245,7 @@ int grab_image (int cam_num)
     {
         fprintf (stdout, "Grabbing image to file %s\n", cams[cam_num].filename);
     }
+    
     if (fp == NULL)
     {
         fprintf (stderr, "Error opening %s for writing\n", cams[cam_num].filename);
@@ -235,24 +265,46 @@ int grab_image (int cam_num)
         /* Perform the request, res will get the return code */ 
         res = curl_easy_perform(curl);
         
-        /* Check for errors */ 
+        /* Check for CURL errors */ 
         if(res != CURLE_OK)
         {
 
             fprintf(stderr, "%s curl_easy_perform() failed for CAM%i: %s\n", get_time(), cam_num + 1, curl_easy_strerror(res));
             sprintf (buffer, "Error: !CURLE_OK Couldn't fetch image from CAM%i: %s\nurl: %s", cam_num + 1, curl_easy_strerror(res), cams[cam_num].url);
             log_text (buffer);
+            grab_failed (cam_num);
             fclose (fp);
             curl_easy_cleanup(curl);
             return 1;
         }
 
-        build_html (cam_num, cams[cam_num].filename);
 
         /* always cleanup */
         curl_easy_cleanup(curl);
+        
+        /* Check image filesize */
+        fseek (fp, 0, SEEK_END);
+        if (ftell (fp) == 0)
+        {
+            fprintf (stderr, "Error: %s Image grabbed was 0 bytes: CAM%i \n", get_time(), cam_num + 1);
+            fclose (fp);
+            /* delete the empty file */
+            remove (cams[cam_num].filename);
+            grab_failed (cam_num);
+            return 1;
+        }
+        
+        /* We were succesful in grabbing an image */
         fclose (fp);
+        build_html (cam_num, cams[cam_num].filename);
+        cams[cam_num].state = CAM_OK;
+
+        //Change file mode TODO hardcoded
+        chmod (cams[cam_num].filename, 550);
+        
         cams[cam_num].last_grabbed = (long) time (NULL);
+        cams[cam_num].retries = 0;
+        strcpy (cams[cam_num].last_filename, cams[cam_num].last_filename);
         if (cams[cam_num].last_grabbed == -1 )
             fprintf (stderr, "Error getting time?\n");
         return 0;
@@ -260,8 +312,7 @@ int grab_image (int cam_num)
      else
      {
          curl_easy_cleanup(curl);
-         sprintf (buffer, "Error: Couldn't fetch image from CAM%i\n", cam_num);
-         log_text (buffer);
+         fprintf (stderr, "Error setting up curl\n");
          return 1;
      }
 }
@@ -279,12 +330,13 @@ static void sig_handler (int signo)
 void* camgrab (void *arg)
 {
     int cam_num =  *((int *) arg);
+    free (arg);
 
     while (running)
     {
         grab_image (cam_num);
+        usleep (250);
     }
-    //free (arg);
 }
 
 void* rotate_dirs (void *arg)
@@ -316,6 +368,8 @@ static void create_threads (void)
 */
     for (i = 0; i < num_cams; i++)
     {
+        if (verbose)
+            fprintf (stdout, "Thread - CAM%i, enabled=%i\n", i +1, cams[i].enabled);
         if (cams[i].enabled)
         {
             fprintf (stdout, "CAM%i enabled\n", i + 1); 
@@ -329,15 +383,16 @@ static void create_threads (void)
             *arg = i;
             
             ret = pthread_create (&cam_threads[i], NULL, &camgrab, arg);
-            fprintf (stdout, "pthread returned %i\n", ret);
+            if (verbose)
+                fprintf (stdout, "pthread returned %i for thread %i\n", ret, i);
             
             if (ret != 0)
             {
-                fprintf (stderr, "Error creating thread %i\n", i);
+                fprintf (stderr, "Error creating CAM%i thread\n", i + 1);
             }
             else
             {
-                fprintf (stdout, "started thread %i\n", i);
+                fprintf (stdout, "started CAM%i thread\n", i + 1);
             }
         }
     }
@@ -384,6 +439,7 @@ int main(int argc, char **argv)
 
     while (running)
     {
+        sleep (1);
     }
     fprintf (stdout, "Exiting\n");
     return 0;

@@ -14,6 +14,11 @@ static void cams_init (void)
         cams[i].interval = 0;
         cams[i].enabled = 0;
         cams[i].last_grabbed = 0;
+        cams[i].state = CAM_FAIL;
+        cams[i].retries = 0;
+        cams[i].maxretries = 0;
+        strcpy (cams[i].filename, "");
+        strcpy (cams[i].last_filename, "");
     }
 }
 
@@ -31,8 +36,9 @@ static void cfg_dump (void)
         fprintf (stdout, "url = %s\n", cams[i].url);
         fprintf (stdout, "dir = %s\n", cams[i].dir);
         fprintf (stdout, "password = %s\n", cams[i].password);
-        fprintf (stdout, "maxsize = %i\n", cams[i].maxsize);
+        fprintf (stdout, "maxsize = %lu\n", cams[i].maxsize);
         fprintf (stdout, "interval = %i\n", cams[i].interval);
+        fprintf (stdout, "maxretries = %i\n", cams[i].maxretries);
         fprintf (stdout, "enabled = %i\n", cams[i].enabled);
     }
 }
@@ -42,7 +48,9 @@ static int check_cfg_line (char* cfg_line)
     char name[5];
     char opt[256];
     int cam_num;
-
+    
+    memset (opt, 0, sizeof(opt));
+    memset (name, 0, sizeof(name));
     strncpy (name, cfg_line, 4);
     name[5] = '\0';
     cam_num = atoi (name + 3);
@@ -82,7 +90,7 @@ static int check_cfg_line (char* cfg_line)
     else if (strncmp (cfg_line + 4, CFG_CAM_MAXSIZE, strlen (CFG_CAM_MAXSIZE)) == 0)
     {
         strcpy (opt, cfg_line + 4 + strlen (CFG_CAM_MAXSIZE));
-        cams[cam_num].maxsize = atoi (opt);
+        cams[cam_num].maxsize = atol (opt);
     }
     else if (strncmp (cfg_line + 4, CFG_CAM_PASSWORD, strlen (CFG_CAM_PASSWORD)) == 0)
     {
@@ -96,6 +104,12 @@ static int check_cfg_line (char* cfg_line)
         strcpy (opt, cfg_line + 4 + strlen (CFG_CAM_INTERVAL));
         cams[cam_num].interval = atoi (opt);
     }
+    else if (strncmp (cfg_line + 4, CFG_CAM_MAXRETRIES, strlen (CFG_CAM_MAXRETRIES)) == 0)
+    {
+        strcpy (opt, cfg_line + 4 + strlen (CFG_CAM_MAXRETRIES));
+        cams[cam_num].maxretries = atoi (opt);
+    }
+
     else if (strncmp (cfg_line + 4, CFG_CAM_ENABLED, strlen (CFG_CAM_ENABLED)) == 0)
     {
         strcpy (opt, cfg_line + 4 + strlen (CFG_CAM_ENABLED));
